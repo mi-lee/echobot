@@ -1,6 +1,3 @@
-// fetch messages by user
-// find one with most reacted to, or longest
-
 package main
 
 import (
@@ -39,52 +36,26 @@ type response struct {
 }
 
 const (
-	random        = "random.json"
-	gettingjacked = "gettingjacked.json"
-	kenny         = "kenny.json"
-	project       = "project.json"
-	thoughts      = "thoughts.json"
-	meirl         = "me_irl.json"
-	discuss       = "discuss.json"
-	tolearn       = "tolearn.json"
-	dir           = "/Users/michelle/Dropbox/Work/playground/slackbot/"
+	dir = "/Users/michelle/Dropbox/Work/playground/slackbot/"
 )
+
+var (
+	userMessages  = make(map[string][]message)
+	userIDs       = make(map[string]string)
+	slackChannels = []string{"random.json", "gettingjacked.json", "kenny.json", "thoughts.json", "me_irl.json", "project.json", "tolearn.json", "discuss.json"}
+	usernames     = []string{"sonal", "alex", "kenny", "mac", "ado", "michelle"}
+)
+
+func init() {
+	setUserIDs()
+	setUserMessages()
+}
 
 func check(e error) {
 	if e != nil {
 		fmt.Printf("-- e = %v \n", e)
 		panic(e)
 	}
-}
-
-func init() {
-	setUserIDs()
-}
-
-func main() {
-	for _, slackchan := range []string{random, gettingjacked, kenny, thoughts, meirl, project, tolearn, discuss} {
-		dat, err := ioutil.ReadFile(dir + slackchan)
-		check(err)
-
-		response := response{}
-		err = json.Unmarshal([]byte(string(dat)), &response)
-		check(err)
-
-		for _, username := range []string{"sonal", "alex", "kenny", "mac", "ado", "michelle"} {
-			uid := getUserIDs(username)
-			result := response.filterByUser(uid)
-			userMessages[username] = append(result, userMessages[username]...)
-		}
-	}
-
-	theRest()
-}
-
-var userIDs = make(map[string]string)
-var userMessages = make(map[string][]message)
-
-func getUserIDs(name string) (userID string) {
-	return userIDs[name]
 }
 
 func setUserIDs() {
@@ -96,11 +67,26 @@ func setUserIDs() {
 	userIDs["michelle"] = "U1X4W9U3V"
 }
 
-//func setUserMessages(username string) {
-//	uid := getUserIDs(username)
-//	result := response.filterByUser(uid)
-//	userMessages[username] = result
-//}
+func setUserMessages() {
+	for _, slackChannel := range slackChannels {
+		dat, err := ioutil.ReadFile(dir + slackChannel)
+		check(err)
+
+		response := response{}
+		err = json.Unmarshal([]byte(string(dat)), &response)
+		check(err)
+
+		for _, username := range usernames {
+			uid := getUserIDs(username)
+			result := response.filterByUser(uid)
+			userMessages[username] = append(result, userMessages[username]...)
+		}
+	}
+}
+
+func getUserIDs(name string) (userID string) {
+	return userIDs[name]
+}
 
 func (r *response) filterByUser(userID string) (result []message) {
 	for _, m := range r.Messages {
@@ -111,8 +97,28 @@ func (r *response) filterByUser(userID string) (result []message) {
 	return result
 }
 
-func theRest() {
+func respond(rtm *slack.RTM, msg *slack.MessageEvent, prefix string) {
+	text := msg.Text
+	text = strings.TrimPrefix(text, prefix)
+	text = strings.TrimSpace(text)
+	text = strings.ToLower(text)
 
+	if userMessages[text] != nil {
+		for i := range []int{1, 2, 3} {
+			fmt.Printf("i = %v \n", i)
+			length := len(userMessages[text])
+			fmt.Printf("length = %v \n", length)
+			responseIndex := rand.Intn(length)
+			fmt.Printf("responseIndex = %v \n", responseIndex)
+			response := userMessages[text][responseIndex].Text
+			rtm.SendMessage(rtm.NewOutgoingMessage(response, msg.Channel))
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+	}
+
+}
+
+func main() {
 	token := os.Getenv("SLACK_TOKEN")
 	api := slack.New(token)
 	rtm := api.NewRTM()
@@ -144,29 +150,8 @@ Loop:
 				break Loop
 
 			default:
-				//Take no action
+				// Take no action
 			}
 		}
 	}
-}
-
-func respond(rtm *slack.RTM, msg *slack.MessageEvent, prefix string) {
-	text := msg.Text
-	text = strings.TrimPrefix(text, prefix)
-	text = strings.TrimSpace(text)
-	text = strings.ToLower(text)
-
-	if userMessages[text] != nil {
-		for i := range []int{1, 2} {
-			fmt.Printf("i = %v \n", i)
-			length := len(userMessages[text])
-			fmt.Printf("length = %v \n", length)
-			responseIndex := rand.Intn(length)
-			fmt.Printf("responseIndex = %v \n", responseIndex)
-			response := userMessages[text][responseIndex].Text
-			rtm.SendMessage(rtm.NewOutgoingMessage(response, msg.Channel))
-			time.Sleep(time.Duration(1) * time.Second)
-		}
-	}
-
 }
