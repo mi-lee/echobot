@@ -110,7 +110,10 @@ func respond(rtm *slack.RTM, msg *slack.MessageEvent, prefix string) {
 			fmt.Printf("length = %v \n", length)
 			responseIndex := rand.Intn(length)
 			fmt.Printf("responseIndex = %v \n", responseIndex)
-			response := userMessages[text][responseIndex].Text
+			str := strings.Split(userMessages[text][responseIndex].Text, " ")
+			userMessages[text] = append(userMessages[text][:responseIndex], userMessages[text][responseIndex+1:]...)
+			response := strings.Join(str, " ")
+			fmt.Printf("response = %v \n", response)
 			rtm.SendMessage(rtm.NewOutgoingMessage(response, msg.Channel))
 			time.Sleep(time.Duration(1) * time.Second)
 		}
@@ -134,7 +137,7 @@ Loop:
 				fmt.Println("-- Connection counter:", ev.ConnectionCount)
 
 			case *slack.MessageEvent:
-				fmt.Printf("-- Message: %v\n", ev)
+				//fmt.Printf("-- Message: %v\n", ev)
 				info := rtm.GetInfo()
 				prefix := fmt.Sprintf("<@%s> ", info.User.ID)
 
@@ -146,7 +149,7 @@ Loop:
 				fmt.Printf("-- Error: %s\n", ev.Error())
 
 			case *slack.InvalidAuthEvent:
-				fmt.Printf("-- Invalid credentials")
+				fmt.Println("-- Invalid credentials")
 				break Loop
 
 			default:
