@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	configJson = "config/config.dev.json"
+	configJson = "/config/config.dev.json"
 	MSG_LIMIT  = 950
 )
 
@@ -183,7 +183,7 @@ func setUserIDs(u *UserResponse) {
 }
 
 func writeToFile(filename string, v interface{}) (err error) {
-	str, err := json.Marshal(v)
+	str, err := json.MarshalIndent(v, "", "  ")
 	check(err)
 	dir, err := os.Getwd()
 	check(err)
