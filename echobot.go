@@ -106,30 +106,6 @@ func init() {
 	setUserMessages()
 }
 
-func (h *HistoryResponse) filterByUser(userID string) (result []Message) {
-	for _, m := range h.Messages {
-		if m.User == userID {
-			if m.Subtype == "file_share" {
-				m.Text = m.Text + " " + m.File.URLPrivate
-			}
-			result = append(result, m)
-		}
-	}
-	return result
-}
-
-func (h *HistoryResponse) filter(word string) {
-	for i, m := range h.Messages {
-		if strings.Contains(m.Text, word) {
-			num := i + 1
-			if len(h.Messages) >= num {
-				num = i
-			}
-			h.Messages = append(h.Messages[:i], h.Messages[num:]...)
-		}
-	}
-}
-
 func getUsers() {
 	userResp := UserResponse{}
 	userEndpoint := fmt.Sprintf("https://slack.com/api/users.list?token=%s&pretty=1", conf.API_TOKEN)
@@ -137,6 +113,10 @@ func getUsers() {
 	err := writeToFile("users", &userResp)
 	check(err)
 	setUserIDs(&userResp)
+}
+
+func getUserIDs(name string) (userID string) {
+	return userIDs[name]
 }
 
 func getChannels() []string {
@@ -152,6 +132,14 @@ func getChannels() []string {
 		}
 	}
 	return slackChannelIDs
+}
+
+func getChannelHistory(chanID string, h *HistoryResponse) {
+	histEndpoint := fmt.Sprintf("https://slack.com/api/channels.history?token=%s&channel=%s&count=%d&pretty=1", conf.API_TOKEN, chanID, MSG_LIMIT)
+	getResponse(histEndpoint, h)
+	cleanEchobotMsg(h)
+	err := writeToFile(chanID, h)
+	check(err)
 }
 
 func getResponse(url string, v interface{}) {
@@ -182,6 +170,30 @@ func setUserIDs(u *UserResponse) {
 	}
 }
 
+func (h *HistoryResponse) filterByUser(userID string) (result []Message) {
+	for _, m := range h.Messages {
+		if m.User == userID {
+			if m.Subtype == "file_share" {
+				m.Text = m.Text + " " + m.File.URLPrivate
+			}
+			result = append(result, m)
+		}
+	}
+	return result
+}
+
+func (h *HistoryResponse) filter(word string) {
+	for i, m := range h.Messages {
+		if strings.Contains(m.Text, word) {
+			num := i + 1
+			if len(h.Messages) >= num {
+				num = i
+			}
+			h.Messages = append(h.Messages[:i], h.Messages[num:]...)
+		}
+	}
+}
+
 func writeToFile(filename string, v interface{}) (err error) {
 	str, err := json.MarshalIndent(v, "", "  ")
 	check(err)
@@ -191,14 +203,6 @@ func writeToFile(filename string, v interface{}) (err error) {
 	err = ioutil.WriteFile(file, str, 0644)
 	check(err)
 	return err
-}
-
-func getChannelHistory(chanID string, h *HistoryResponse) {
-	histEndpoint := fmt.Sprintf("https://slack.com/api/channels.history?token=%s&channel=%s&count=%d&pretty=1", conf.API_TOKEN, chanID, MSG_LIMIT)
-	getResponse(histEndpoint, h)
-	cleanEchobotMsg(h)
-	err := writeToFile(chanID, h)
-	check(err)
 }
 
 func cleanEchobotMsg(v GenericResponse) {
@@ -222,10 +226,6 @@ func setUserMessages() {
 	writeToFile("userIDs", userIDs)
 	writeToFile("userMessages", userMessages)
 	writeToFile("slackChannelIDs", slackChannelIDs)
-}
-
-func getUserIDs(name string) (userID string) {
-	return userIDs[name]
 }
 
 func respond(rtm *slack.RTM, msg *slack.MessageEvent, prefix string) {

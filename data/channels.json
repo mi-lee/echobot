@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "channels": [
+    {
+      "id": "A8AKDDH8",
+      "name": "<TEST CHANNEL 1>",
+      "created": 1468885026,
+      "is_archived": true,
+      "creator": "JAKDJ8DDJ"
+    },
+    {
+      "id": "ALKJ8JLK",
+      "name": "<TEST CHANNEL 2>",
+      "created": 1519257396,
+      "is_archived": false,
+      "creator": "JAKDJ8DDJ"
+    },
+    // ... etc
+  ]
+}
